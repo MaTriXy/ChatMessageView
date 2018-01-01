@@ -10,8 +10,13 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.support.annotation.ColorInt;
+import android.support.annotation.ColorRes;
+import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
@@ -21,6 +26,8 @@ import me.himanshusoni.chatmessageview.util.ViewUtil;
  * Chat Message view to create chatting window view
  */
 public class ChatMessageView extends RelativeLayout {
+    private static final String TAG = "ChatMessageView";
+
     private ImageView arrowImage;
     private RelativeLayout containerLayout;
 
@@ -67,19 +74,156 @@ public class ChatMessageView extends RelativeLayout {
         initContent();
     }
 
+    public boolean isShowArrow() {
+        return showArrow;
+    }
+
+    public void setShowArrow(boolean showArrow) {
+        this.showArrow = showArrow;
+        if (!showArrow) {
+            arrowImage.setVisibility(INVISIBLE);
+        } else {
+            arrowImage.setVisibility(VISIBLE);
+        }
+    }
 
     public void setArrowPosition(ArrowPosition position) {
         arrowPosition = position;
+        updatePositionAndGravity();
     }
 
     public void setArrowGravity(ArrowGravity gravity) {
         arrowGravity = gravity;
+        updatePositionAndGravity();
     }
 
-    public void setBackgroundColors(int bgColorRes, int bgPressedColorRes) {
-        backgroundColorPressed = getResources().getColor(bgPressedColorRes);
-        backgroundColor = getResources().getColor(bgColorRes);
+    private void invalidateRules(LayoutParams params) {
+        params.addRule(ALIGN_PARENT_LEFT, 0);
+        params.addRule(ALIGN_PARENT_TOP, 0);
+        params.addRule(ALIGN_PARENT_BOTTOM, 0);
+        params.addRule(ALIGN_PARENT_RIGHT, 0);
+
+        params.addRule(CENTER_HORIZONTAL, 0);
+        params.addRule(CENTER_VERTICAL, 0);
+
+        params.addRule(RIGHT_OF, 0);
+        params.addRule(BELOW, 0);
+        params.addRule(ABOVE, 0);
+        params.addRule(LEFT_OF, 0);
+
+        params.addRule(ALIGN_BOTTOM, 0);
+        params.addRule(ALIGN_TOP, 0);
+        params.addRule(ALIGN_LEFT, 0);
+        params.addRule(ALIGN_RIGHT, 0);
+    }
+
+
+    private void updatePositionAndGravity() {
+        LayoutParams arrowParams = (LayoutParams) arrowImage.getLayoutParams();
+        LayoutParams containerParams = (LayoutParams) containerLayout.getLayoutParams();
+
+        invalidateRules(arrowParams);
+        invalidateRules(containerParams);
+
+        int arrowRotation;
+        switch (arrowPosition) {
+            case TOP: {
+                arrowRotation = 270;
+                arrowParams.addRule(ALIGN_PARENT_TOP, TRUE);
+                arrowParams.setMargins((int) arrowMargin, 0, (int) arrowMargin, 0);
+
+                containerParams.addRule(BELOW, arrowImage.getId());
+                break;
+            }
+            case BOTTOM: {
+                arrowRotation = 90;
+                //arrowParams.addRule(ALIGN_PARENT_BOTTOM, TRUE);
+                arrowParams.setMargins((int) arrowMargin, 0, (int) arrowMargin, 0);
+
+                arrowParams.addRule(BELOW, containerLayout.getId());
+//                containerParams.addRule(ABOVE, arrowImage.getId());
+                break;
+            }
+            case LEFT: {
+                arrowRotation = 180;
+                arrowParams.addRule(ALIGN_PARENT_LEFT, TRUE);
+                arrowParams.setMargins(0, (int) arrowMargin, 0, (int) arrowMargin);
+
+                containerParams.addRule(RIGHT_OF, arrowImage.getId());
+                // arrowParams.addRule(LEFT_OF, containerLayout.getId());
+                break;
+            }
+            default: {
+                arrowRotation = 0;
+                arrowParams.addRule(ALIGN_PARENT_RIGHT, TRUE);
+                arrowParams.setMargins(0, (int) arrowMargin, 0, (int) arrowMargin);
+                containerParams.addRule(LEFT_OF, arrowImage.getId());
+                break;
+            }
+        }
+
+        switch (arrowGravity) {
+            case START:
+                if (arrowPosition == ArrowPosition.TOP || arrowPosition == ArrowPosition.BOTTOM) {
+                    arrowParams.addRule(ALIGN_LEFT, containerLayout.getId());
+                } else {
+                    arrowParams.addRule(ALIGN_TOP, containerLayout.getId());
+                }
+                break;
+            case CENTER:
+                if (arrowPosition == ArrowPosition.TOP || arrowPosition == ArrowPosition.BOTTOM) {
+                    arrowParams.addRule(CENTER_HORIZONTAL, TRUE);
+                } else {
+                    arrowParams.addRule(CENTER_VERTICAL, TRUE);
+                }
+                break;
+            case END:
+                if (arrowPosition == ArrowPosition.TOP || arrowPosition == ArrowPosition.BOTTOM) {
+                    arrowParams.addRule(ALIGN_RIGHT, containerLayout.getId());
+                } else {
+                    arrowParams.addRule(ALIGN_BOTTOM, containerLayout.getId());
+                }
+                break;
+            default:
+                break;
+        }
+
+        Log.d(TAG, "updatePositionAndGravity: arrow: " + arrowParams.getRules().length);
+        Log.d(TAG, "updatePositionAndGravity: container: " + containerParams.getRules().length);
+
+        int arrowRes = R.drawable.cmv_arrow;
+        Bitmap source = BitmapFactory.decodeResource(this.getResources(), arrowRes);
+        Bitmap rotateBitmap = rotateBitmap(source, arrowRotation);
+
+        normalDrawable = new TintedBitmapDrawable(getResources(), rotateBitmap, backgroundColor);
+        pressedDrawable = new TintedBitmapDrawable(getResources(), rotateBitmap, backgroundColorPressed);
+
+        arrowImage.setImageDrawable(normalDrawable);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            arrowImage.setImageTintList(ColorStateList.valueOf(backgroundColor));
+        }
+
+
+        arrowImage.setLayoutParams(arrowParams);
+        containerLayout.setLayoutParams(containerParams);
+    }
+
+    public void setBackgroundColorRes(@ColorRes int bgColorRes, @ColorRes int bgPressedColorRes) {
+        backgroundColorPressed = ContextCompat.getColor(getContext(), bgPressedColorRes);
+        backgroundColor = ContextCompat.getColor(getContext(), bgColorRes);
         updateColors();
+    }
+
+    public void setBackgroundColor(@ColorInt int bgColorRes, @ColorInt int bgPressedColorRes) {
+        backgroundColorPressed = bgPressedColorRes;
+        backgroundColor = bgColorRes;
+        updateColors();
+    }
+
+    public void setContentPadding(int contentPadding) {
+        this.contentPadding = contentPadding;
+        containerLayout.setPadding(contentPadding, contentPadding, contentPadding, contentPadding);
     }
 
     @Override
@@ -93,90 +237,20 @@ public class ChatMessageView extends RelativeLayout {
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
     private void initContent() {
-
         arrowImage = new ImageView(getContext());
         arrowImage.setId(ViewUtil.generateViewId());
 
-        if (!showArrow) {
-            arrowImage.setVisibility(INVISIBLE);
-        }
-
         containerLayout = new RelativeLayout(getContext());
         containerLayout.setId(ViewUtil.generateViewId());
-        containerLayout.setPadding((int) contentPadding, (int) contentPadding, (int) contentPadding, (int) contentPadding);
-        LayoutParams conRlParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
 
+        setShowArrow(showArrow);
+        setContentPadding((int) contentPadding);
 
-        LayoutParams arrowParams = new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        super.addView(arrowImage, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        super.addView(containerLayout, new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        int arrowRotation;
-        switch (arrowPosition) {
-            case LEFT: {
-                arrowRotation = 180;
-                arrowParams.addRule(ALIGN_PARENT_LEFT);
-                arrowParams.setMargins(0, (int) arrowMargin, 0, (int) arrowMargin);
-                conRlParams.addRule(RelativeLayout.RIGHT_OF, arrowImage.getId());
-            }
-            break;
-            case TOP: {
-                arrowRotation = 270;
-                arrowParams.setMargins((int) arrowMargin, 0, (int) arrowMargin, 0);
-                conRlParams.addRule(RelativeLayout.BELOW, arrowImage.getId());
-            }
-            break;
-            case BOTTOM: {
-                arrowRotation = 90;
-                arrowParams.setMargins((int) arrowMargin, 0, (int) arrowMargin, 0);
-                arrowParams.addRule(RelativeLayout.BELOW, containerLayout.getId());
-            }
-            break;
-            default: {
-                arrowRotation = 0;
-                arrowParams.addRule(ALIGN_PARENT_RIGHT);
-                arrowParams.setMargins(0, (int) arrowMargin, 0, (int) arrowMargin);
-                conRlParams.addRule(RelativeLayout.LEFT_OF, arrowImage.getId());
-            }
-        }
+        updatePositionAndGravity();
 
-        switch (arrowGravity) {
-            case START:
-                if (arrowPosition == ArrowPosition.TOP || arrowPosition == ArrowPosition.BOTTOM) {
-                    arrowParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
-                } else {
-                    arrowParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                }
-                break;
-            case CENTER:
-                if (arrowPosition == ArrowPosition.TOP || arrowPosition == ArrowPosition.BOTTOM) {
-                    arrowParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
-                } else {
-                    arrowParams.addRule(RelativeLayout.CENTER_VERTICAL);
-                }
-                break;
-            case END:
-                if (arrowPosition == ArrowPosition.TOP || arrowPosition == ArrowPosition.BOTTOM) {
-                    arrowParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
-                } else {
-                    arrowParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-                }
-                break;
-
-        }
-
-        int arrowRes = R.drawable.cmv_arrow;
-        Bitmap source = BitmapFactory.decodeResource(this.getResources(), arrowRes);
-        Bitmap rotateBitmap = rotateBitmap(source, arrowRotation);
-
-        normalDrawable = new TintedBitmapDrawable(getResources(), rotateBitmap, backgroundColor);
-        pressedDrawable = new TintedBitmapDrawable(getResources(), rotateBitmap, backgroundColorPressed);
-
-        arrowImage.setImageDrawable(normalDrawable);
-        super.addView(arrowImage, arrowParams);
-        super.addView(containerLayout, conRlParams);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            arrowImage.setImageTintList(ColorStateList.valueOf(backgroundColor));
-        }
         updateColors();
         this.setClickable(true);
     }
@@ -235,7 +309,6 @@ public class ChatMessageView extends RelativeLayout {
     public enum ArrowPosition {
 
         LEFT(0), RIGHT(1), TOP(2), BOTTOM(3);
-
 
         int value;
 

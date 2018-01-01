@@ -20,7 +20,7 @@ add gradle dependency to your dependency list:
 
 ``` groovy
 dependencies {
-	compile 'me.himanshusoni.chatmessageview:chat-message-view:1.0.2'
+	compile 'me.himanshusoni.chatmessageview:chat-message-view:1.0.7'
 }
 ```
 
@@ -76,7 +76,7 @@ Description:
 
 
 
-==================
+----
 developed to make programming easy.
 
 by Himanshu Soni (himanshusoni.me@gmail.com)
